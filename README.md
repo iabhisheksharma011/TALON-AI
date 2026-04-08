@@ -1,4 +1,4 @@
-# 🦙 Ollama Chat — RAG-powered chat with local LLMs
+# 🦙 Ollama Offline Chat — RAG-powered chat with local LLMs
 
 A sleek, terminal-style chat app that connects to your local Ollama instance.
 Features streaming responses, persistent chat history, multi-file RAG with caching,
