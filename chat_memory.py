@@ -9,11 +9,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
 
-DB_PATH = Path(__file__).parent / "cache" / "chat_memory.db"
+_CACHE_DIR = Path(__file__).parent / "cache"
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)   # ← create on Windows too
+DB_PATH = _CACHE_DIR / "chat_memory.db"
 
 
 def _db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
