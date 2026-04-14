@@ -5,6 +5,8 @@ Features streaming responses, persistent chat history, multi-file RAG with cachi
 and a clean dark UI — all in a single Python project, no cloud required.
 
 ---
+<img width="2879" height="1458" alt="image" src="https://github.com/user-attachments/assets/7dbc30b6-debe-46dc-864f-73c8a4730379" />
+---
 
 ## Features
 
