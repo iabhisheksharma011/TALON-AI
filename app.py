@@ -1,22 +1,28 @@
 """
-Flask backend for Ollama Chat.
-Run with: python app.py
+Flask backend for TALON-AI.
 """
 
 import os
 import json
 from pathlib import Path
-from flask import Flask, request, jsonify, Response, send_from_directory, stream_with_context
+from flask import Flask, request, jsonify, Response, stream_with_context, render_template
 
 import ollama_client as ollama
 import chat_memory as memory
 from rag_engine import rag_index
+from hardware import get_hardware_summary
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB upload limit
+BASE_DIR = Path(__file__).parent.resolve()
 
-UPLOAD_DIR = Path(__file__).parent / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+app = Flask(
+    __name__,
+    static_folder=str(BASE_DIR / "static"),
+    template_folder=str(BASE_DIR / "templates"),
+)
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
+
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {
     ".pdf", ".txt", ".md", ".csv", ".json", ".py", ".js", ".ts",
@@ -24,16 +30,11 @@ ALLOWED_EXTENSIONS = {
 }
 
 
-# ── Serve Frontend ────────────────────────────────────────────────────────────
+# ── Frontend ──────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
-    return send_from_directory("templates", "index.html")
-
-
-@app.route("/static/<path:path>")
-def static_files(path):
-    return send_from_directory("static", path)
+    return render_template("index.html")
 
 
 # ── Ollama ────────────────────────────────────────────────────────────────────
@@ -46,13 +47,19 @@ def ollama_status():
 @app.route("/api/ollama/models")
 def get_models():
     try:
-        models = ollama.get_models()
-        return jsonify({"models": models})
+        return jsonify({"models": ollama.get_models()})
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 503
 
 
-# ── Sessions ─────────────────────────────────────────────────────────────────
+# ── Hardware ──────────────────────────────────────────────────────────────────
+
+@app.route("/api/hardware")
+def hardware():
+    return jsonify(get_hardware_summary())
+
+
+# ── Sessions ──────────────────────────────────────────────────────────────────
 
 @app.route("/api/sessions", methods=["GET"])
 def list_sessions():
@@ -84,54 +91,48 @@ def get_messages(sid):
     return jsonify(memory.get_messages(sid, limit=200))
 
 
-# ── Chat (streaming) ──────────────────────────────────────────────────────────
+# ── Chat ──────────────────────────────────────────────────────────────────────
 
 @app.route("/api/chat/<int:sid>", methods=["POST"])
 def chat(sid):
     data = request.json or {}
-    user_msg = data.get("message", "").strip()
-    model = data.get("model", "")
-    use_rag = data.get("use_rag", True)
+    user_msg  = data.get("message", "").strip()
+    model     = data.get("model", "")
+    use_rag   = data.get("use_rag", True)
+    num_gpu   = int(data.get("num_gpu", 0))      # 0 = CPU only
+    num_thread= int(data.get("num_thread", 0))   # 0 = Ollama default
 
     if not user_msg:
         return jsonify({"error": "Empty message"}), 400
     if not model:
         return jsonify({"error": "No model selected"}), 400
 
-    # Build context from RAG if files are indexed
-    context_chunks = []
-    if use_rag:
-        context_chunks = rag_index.retrieve(user_msg)
-
-    # Persist user message
+    context_chunks = rag_index.retrieve(user_msg) if use_rag else []
     memory.add_message(sid, "user", user_msg)
     memory.update_session_model(sid, model)
 
-    # Build messages for LLM
     system_prompt = _build_system_prompt(context_chunks)
     history = memory.get_history_for_llm(sid, max_messages=20)
 
-    # history already includes the user message we just added
     llm_messages = []
     if system_prompt:
         llm_messages.append({"role": "system", "content": system_prompt})
     llm_messages.extend(history)
 
     def generate():
-        full_response = []
+        full = []
         try:
-            for token in ollama.chat_stream(model, llm_messages):
-                full_response.append(token)
+            for token in ollama.chat_stream(model, llm_messages, num_gpu=num_gpu, num_thread=num_thread):
+                full.append(token)
                 yield f"data: {json.dumps({'token': token})}\n\n"
         except RuntimeError as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             return
         except Exception as e:
-            yield f"data: {json.dumps({'error': f'Unexpected error: {e}'})}\n\n"
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
             return
 
-        # Save assistant response
-        assistant_text = "".join(full_response)
+        assistant_text = "".join(full)
         if assistant_text:
             memory.add_message(sid, "assistant", assistant_text)
 
@@ -141,31 +142,19 @@ def chat(sid):
     return Response(
         stream_with_context(generate()),
         mimetype="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        }
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 def _build_system_prompt(chunks) -> str:
     if not chunks:
-        return (
-            "You are a helpful assistant. Answer questions clearly and concisely. "
-            "If you don't know something, say so."
-        )
-    context_text = "\n\n---\n\n".join(
-        f"[From: {c['filename']}]\n{c['text']}" for c in chunks
-    )
+        return "You are a helpful assistant. Answer clearly. Say if you don't know."
+    ctx = "\n\n---\n\n".join(f"[From: {c['filename']}]\n{c['text']}" for c in chunks)
     return (
-        "You are a helpful assistant with access to the following document excerpts. "
-        "Use them to answer the user's question. Always cite which file/document "
-        "your information comes from when possible. If the documents don't contain "
-        "enough information, use your general knowledge and say so.\n\n"
-        "=== DOCUMENT CONTEXT ===\n"
-        f"{context_text}\n"
-        "========================\n\n"
-        "Now answer the user's question based on the above context."
+        "You are a helpful assistant with access to these document excerpts. "
+        "Use them to answer. Cite filenames where possible.\n\n"
+        "=== DOCUMENT CONTEXT ===\n" + ctx + "\n========================\n\n"
+        "Answer based on the above context."
     )
 
 
@@ -180,19 +169,13 @@ def list_files():
 def upload_files():
     if "files" not in request.files:
         return jsonify({"error": "No files provided"}), 400
-
     results = []
     for file in request.files.getlist("files"):
         filename = file.filename or "unnamed"
         ext = Path(filename).suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
-            results.append({
-                "filename": filename,
-                "error": f"File type '{ext}' not supported",
-                "ok": False
-            })
+            results.append({"filename": filename, "error": f"Unsupported: {ext}", "ok": False})
             continue
-
         save_path = UPLOAD_DIR / filename
         file.save(str(save_path))
         try:
@@ -200,7 +183,6 @@ def upload_files():
             results.append({**meta, "ok": True})
         except Exception as e:
             results.append({"filename": filename, "error": str(e), "ok": False})
-
     return jsonify({"results": results})
 
 
@@ -213,6 +195,6 @@ def remove_file(file_hash):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("\n🦙  Ollama Chat is starting...")
-    print("    Open  http://localhost:5000  in your browser\n")
+    print(f"\n🦙  TALON-AI starting...")
+    print(f"    Open  http://localhost:5000\n")
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

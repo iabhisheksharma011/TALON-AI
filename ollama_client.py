@@ -1,5 +1,6 @@
 """
 Thin wrapper around Ollama's local HTTP API.
+Supports hardware options: num_gpu (GPU layers) and num_thread (CPU threads).
 """
 
 import json
@@ -10,14 +11,12 @@ OLLAMA_BASE = "http://localhost:11434"
 
 
 def get_models() -> List[Dict]:
-    """Return list of locally available Ollama models."""
     try:
         r = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=5)
         r.raise_for_status()
-        data = r.json()
-        return data.get("models", [])
+        return r.json().get("models", [])
     except requests.exceptions.ConnectionError:
-        raise RuntimeError("Ollama is not running. Please start it with: ollama serve")
+        raise RuntimeError("Ollama is not running. Start it with: ollama serve")
     except Exception as e:
         raise RuntimeError(f"Failed to contact Ollama: {e}")
 
@@ -25,23 +24,33 @@ def get_models() -> List[Dict]:
 def chat_stream(
     model: str,
     messages: List[Dict],
+    num_gpu: int = 0,
+    num_thread: int = 0,
 ) -> Generator[str, None, None]:
     """
     Stream a chat response from Ollama.
-    Yields text tokens as they arrive.
-    messages: list of {"role": "user"|"assistant"|"system", "content": str}
+    num_gpu    : number of model layers to offload to GPU (0 = CPU only)
+    num_thread : number of CPU threads (0 = Ollama default)
     """
+    options = {}
+    if num_gpu >= 0:
+        options["num_gpu"] = num_gpu          # 0 = pure CPU, >0 = GPU layers
+    if num_thread > 0:
+        options["num_thread"] = num_thread
+
     payload = {
         "model": model,
         "messages": messages,
         "stream": True,
+        "options": options,
     }
+
     try:
         with requests.post(
             f"{OLLAMA_BASE}/api/chat",
             json=payload,
             stream=True,
-            timeout=120,
+            timeout=180,
         ) as resp:
             resp.raise_for_status()
             for line in resp.iter_lines():
@@ -57,7 +66,7 @@ def chat_stream(
                 if data.get("done"):
                     break
     except requests.exceptions.ConnectionError:
-        raise RuntimeError("Ollama is not running. Please start it with: ollama serve")
+        raise RuntimeError("Ollama is not running. Start it with: ollama serve")
 
 
 def is_running() -> bool:

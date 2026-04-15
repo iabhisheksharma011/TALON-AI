@@ -340,6 +340,162 @@ body {
 }
 .tac-switch.on .tac-knob { left:calc(100% - clamp(12px,1.2vw,16px)); background:var(--green); box-shadow:0 0 6px var(--green); }
 
+/* ── Hardware control pod ────────────────────────────── */
+.hw-pod {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px,0.5vw,8px);
+  border: 1px solid var(--border2);
+  padding: clamp(3px,0.5vh,6px) clamp(6px,0.7vw,10px);
+  background: var(--bg2);
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.hw-pod:hover { border-color: var(--amber-dim); }
+.hw-pod-label {
+  font-family: var(--mono); font-size: var(--fs-xs);
+  color: var(--text3); text-transform: uppercase;
+  letter-spacing: 0.12em; white-space: nowrap;
+}
+.hw-chip {
+  font-family: var(--mono); font-size: var(--fs-xs);
+  padding: 1px 6px; border: 1px solid;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  transition: all 0.15s;
+}
+.hw-chip.cpu  { color: var(--cyan);  border-color: var(--cyan-dim);  background: var(--cyan-dim);  }
+.hw-chip.gpu  { color: var(--amber); border-color: var(--amber-dim); background: var(--amber-dim); }
+.hw-chip.active.cpu  { border-color: var(--cyan);  box-shadow: 0 0 8px rgba(0,255,225,0.25); }
+.hw-chip.active.gpu  { border-color: var(--amber); box-shadow: 0 0 8px rgba(255,183,0,0.3);  }
+.hw-chip.unavail { opacity: 0.3; cursor: not-allowed; }
+
+/* Hardware modal overlay */
+#hw-modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 5000;
+  align-items: center;
+  justify-content: center;
+}
+#hw-modal-overlay.open { display: flex; }
+
+#hw-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  width: clamp(320px, 38vw, 520px);
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modal-in 0.2s ease-out;
+}
+@keyframes modal-in { from{opacity:0;transform:translateY(-12px);} to{opacity:1;transform:translateY(0);} }
+
+.hw-modal-head {
+  padding: clamp(10px,1.5vh,16px) clamp(14px,1.5vw,20px);
+  border-bottom: 1px solid var(--border2);
+  background: var(--bg1);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.hw-modal-title {
+  font-family: var(--head); font-size: var(--fs-lg); font-weight: 600;
+  color: var(--amber); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.hw-modal-close {
+  font-family: var(--mono); font-size: var(--fs-sm);
+  color: var(--text3); cursor: pointer; border: 1px solid var(--border);
+  padding: 2px 8px; transition: all 0.12s;
+}
+.hw-modal-close:hover { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+
+.hw-section {
+  padding: clamp(10px,1.4vh,16px) clamp(14px,1.5vw,20px);
+  border-bottom: 1px solid var(--border);
+}
+.hw-section-title {
+  font-family: var(--mono); font-size: var(--fs-xs);
+  color: var(--text3); text-transform: uppercase;
+  letter-spacing: 0.2em; margin-bottom: clamp(8px,1vh,12px);
+  display: flex; align-items: center; gap: 6px;
+}
+.hw-section-title::before { content: '//'; color: var(--green-dim); }
+
+.hw-info-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: clamp(6px,0.8vh,10px);
+}
+.hw-info-label { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text2); }
+.hw-info-val   { font-family: var(--mono); font-size: var(--fs-sm); color: var(--green); }
+
+/* Slider rows */
+.hw-slider-row {
+  margin-bottom: clamp(10px,1.3vh,16px);
+}
+.hw-slider-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.hw-slider-label { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em; }
+.hw-slider-val   { font-family: var(--mono); font-size: var(--fs-sm); color: var(--amber); font-weight: 600; min-width: 40px; text-align: right; }
+
+input[type=range].tac-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%; height: 4px;
+  background: var(--border2);
+  outline: none; border-radius: 0;
+  cursor: pointer;
+}
+input[type=range].tac-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: clamp(12px,1.2vw,16px); height: clamp(12px,1.2vw,16px);
+  background: var(--amber);
+  border: 1px solid var(--amber2);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(255,183,0,0.4);
+}
+input[type=range].tac-range.green-range::-webkit-slider-thumb {
+  background: var(--green);
+  border-color: var(--green2);
+  box-shadow: 0 0 6px rgba(57,255,20,0.4);
+}
+
+.hw-mode-row {
+  display: flex; gap: 8px; margin-bottom: clamp(10px,1.3vh,14px);
+}
+.hw-mode-btn {
+  flex: 1; padding: clamp(6px,0.9vh,10px) 8px;
+  font-family: var(--mono); font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  border: 1px solid var(--border2); background: var(--bg1);
+  color: var(--text3); cursor: pointer; transition: all 0.15s;
+  text-align: center;
+}
+.hw-mode-btn:hover { border-color: var(--border3); color: var(--text2); }
+.hw-mode-btn.active-cpu { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+.hw-mode-btn.active-gpu { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+.hw-mode-btn.active-hybrid { border-color: var(--green3); color: var(--green); background: var(--green-dim); }
+.hw-mode-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.hw-apply-btn {
+  width: 100%; padding: clamp(8px,1.2vh,13px);
+  font-family: var(--mono); font-size: var(--fs-sm);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  border: 1px solid var(--green3); background: var(--green-dim);
+  color: var(--green); cursor: pointer; transition: all 0.15s;
+}
+.hw-apply-btn:hover { background: var(--green3); border-color: var(--green); color: #000; box-shadow: 0 0 12px rgba(57,255,20,0.3); }
+
+.no-gpu-notice {
+  font-family: var(--mono); font-size: var(--fs-xs);
+  color: var(--text3); text-align: center;
+  border: 1px solid var(--border); padding: 8px 12px;
+  background: var(--bg1); letter-spacing: 0.08em;
+  line-height: 1.8;
+}
+.no-gpu-notice .warn { color: var(--amber); }
+
 /* ── Chat area ───────────────────────────────────────── */
 #chat-area {
   flex: 1;
@@ -702,6 +858,87 @@ body {
         <div class="tac-switch on" id="rag-toggle-sw"><div class="tac-knob"></div></div>
         <span id="rag-label">DOC-INTEL</span>
       </div>
+      <div class="hw-pod" onclick="openHwModal()" title="Hardware Configuration">
+        <span class="hw-pod-label">HW //</span>
+        <span class="hw-chip cpu active" id="hw-chip-cpu">CPU</span>
+        <span class="hw-chip gpu" id="hw-chip-gpu">GPU</span>
+      </div>
+    </div>
+
+    <!-- Hardware Modal -->
+    <div id="hw-modal-overlay" onclick="closeHwModalOutside(event)">
+      <div id="hw-modal">
+        <div class="hw-modal-head">
+          <span class="hw-modal-title">⚙ Hardware Config</span>
+          <span class="hw-modal-close" onclick="closeHwModal()">✕ CLOSE</span>
+        </div>
+
+        <!-- CPU Section -->
+        <div class="hw-section">
+          <div class="hw-section-title">CPU Unit</div>
+          <div class="hw-info-row">
+            <span class="hw-info-label" id="cpu-name">Detecting...</span>
+            <span class="hw-info-val" id="cpu-cores">-- CORES</span>
+          </div>
+          <div class="hw-slider-row">
+            <div class="hw-slider-head">
+              <span class="hw-slider-label">CPU Threads</span>
+              <span class="hw-slider-val" id="thread-val">AUTO</span>
+            </div>
+            <input type="range" class="tac-range green-range" id="thread-slider"
+              min="1" max="16" value="0"
+              oninput="onThreadSlide(this.value)"/>
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:var(--fs-xs);color:var(--text3);margin-top:3px;">
+              <span>AUTO</span><span id="thread-max">16</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPU Section -->
+        <div class="hw-section" id="gpu-section">
+          <div class="hw-section-title">GPU Unit</div>
+          <div id="gpu-info-area">
+            <div class="no-gpu-notice"><span class="warn">// SCANNING...</span></div>
+          </div>
+        </div>
+
+        <!-- Execution Mode -->
+        <div class="hw-section">
+          <div class="hw-section-title">Execution Mode</div>
+          <div class="hw-mode-row">
+            <button class="hw-mode-btn active-cpu" id="mode-cpu" onclick="setMode('cpu')">CPU ONLY</button>
+            <button class="hw-mode-btn" id="mode-gpu" onclick="setMode('gpu')" disabled>GPU ONLY</button>
+            <button class="hw-mode-btn" id="mode-hybrid" onclick="setMode('hybrid')" disabled>HYBRID</button>
+          </div>
+          <div style="font-family:var(--mono);font-size:var(--fs-xs);color:var(--text3);line-height:1.9;letter-spacing:0.05em;">
+            <div>CPU ONLY — num_gpu=0, all layers on CPU</div>
+            <div>GPU ONLY — all layers offloaded to GPU</div>
+            <div>HYBRID  — split layers between CPU + GPU</div>
+          </div>
+        </div>
+
+        <!-- GPU Layers (shown in hybrid mode) -->
+        <div class="hw-section" id="gpu-layers-section" style="display:none;">
+          <div class="hw-section-title">GPU Layer Split</div>
+          <div class="hw-slider-row">
+            <div class="hw-slider-head">
+              <span class="hw-slider-label">GPU Layers</span>
+              <span class="hw-slider-val" id="gpu-layer-val">18</span>
+            </div>
+            <input type="range" class="tac-range" id="gpu-layer-slider"
+              min="1" max="99" value="18"
+              oninput="onGpuLayerSlide(this.value)"/>
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:var(--fs-xs);color:var(--text3);margin-top:3px;">
+              <span>1</span><span>99</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Apply -->
+        <div class="hw-section" style="border-bottom:none;">
+          <button class="hw-apply-btn" onclick="applyHwConfig()">▶ APPLY CONFIGURATION</button>
+        </div>
+      </div>
     </div>
 
     <div id="chat-area">
@@ -768,6 +1005,12 @@ body {
 ═══════════════════════════════════════════ */
 let currentSession=null, isStreaming=false, ragEnabled=true, sessions=[];
 
+/* Hardware state */
+let hwMode='cpu';       // 'cpu' | 'gpu' | 'hybrid'
+let numGpu=0;           // 0=cpu, >0=gpu layers
+let numThread=0;        // 0=auto
+let hwData=null;
+
 /* Clock */
 function tickClock(){
   const n=new Date();
@@ -778,7 +1021,7 @@ setInterval(tickClock,1000); tickClock();
 
 /* Init */
 async function init(){
-  await Promise.all([checkStatus(),loadModels(),loadSessions(),loadFiles()]);
+  await Promise.all([checkStatus(),loadModels(),loadSessions(),loadFiles(),loadHardware()]);
   const list=await(await fetch('/api/sessions')).json();
   if(list.length&&!currentSession) selectSession(list[0].id);
   document.getElementById('session-title').addEventListener('blur',async e=>{
@@ -787,6 +1030,114 @@ async function init(){
     if(name){ await fetch(`/api/sessions/${currentSession}/rename`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); loadSessions(); }
   });
   setInterval(checkStatus,8000);
+}
+
+/* Hardware */
+async function loadHardware(){
+  try{
+    hwData=await fetch('/api/hardware').then(r=>r.json());
+    renderHardwareModal();
+  }catch(e){ console.warn('Hardware detection failed',e); }
+}
+
+function renderHardwareModal(){
+  if(!hwData)return;
+  const cpu=hwData.cpu;
+  document.getElementById('cpu-name').textContent=cpu.name;
+  document.getElementById('cpu-cores').textContent=cpu.cores+' CORES';
+  const ts=document.getElementById('thread-slider');
+  ts.max=cpu.cores;
+  ts.value=cpu.suggested_threads;
+  document.getElementById('thread-max').textContent=cpu.cores;
+  numThread=cpu.suggested_threads;
+  onThreadSlide(cpu.suggested_threads);
+
+  const gpuArea=document.getElementById('gpu-info-area');
+  const gpus=hwData.gpus||[];
+  if(!gpus.length){
+    gpuArea.innerHTML='<div class="no-gpu-notice"><span class="warn">// NO GPU DETECTED</span><br/>CPU-ONLY MODE ACTIVE<br/>INSTALL NVIDIA/AMD DRIVERS TO ENABLE</div>';
+    return;
+  }
+  let html='';
+  gpus.forEach((g,i)=>{
+    const usedMb=(g.vram_total_mb-g.vram_free_mb);
+    const pct=g.vram_total_mb>0?Math.round(usedMb/g.vram_total_mb*100):0;
+    const bar=g.vram_total_mb>0?Math.round(g.vram_free_mb/g.vram_total_mb*100):0;
+    html+=`
+      <div style="margin-bottom:10px;">
+        <div class="hw-info-row"><span class="hw-info-label">${escHtml(g.name)}</span><span class="hw-chip gpu" style="border-color:var(--amber)">${g.vendor}</span></div>
+        <div class="hw-info-row" style="margin-top:4px;">
+          <span style="font-family:var(--mono);font-size:var(--fs-xs);color:var(--text3)">VRAM: ${usedMb}MB / ${g.vram_total_mb}MB USED</span>
+          <span style="font-family:var(--mono);font-size:var(--fs-xs);color:var(--amber)">${g.utilization_pct}% UTIL</span>
+        </div>
+        <div style="height:4px;background:var(--border2);margin-top:5px;">
+          <div style="height:100%;width:${bar}%;background:linear-gradient(90deg,var(--amber-dim),var(--amber));box-shadow:0 0 6px rgba(255,183,0,0.3);"></div>
+        </div>
+      </div>`;
+  });
+  gpuArea.innerHTML=html;
+
+  // Enable GPU modes
+  document.getElementById('mode-gpu').disabled=false;
+  document.getElementById('mode-hybrid').disabled=false;
+}
+
+function openHwModal(){
+  document.getElementById('hw-modal-overlay').classList.add('open');
+}
+function closeHwModal(){
+  document.getElementById('hw-modal-overlay').classList.remove('open');
+}
+function closeHwModalOutside(e){
+  if(e.target===document.getElementById('hw-modal-overlay')) closeHwModal();
+}
+
+function onThreadSlide(v){
+  numThread=parseInt(v);
+  document.getElementById('thread-val').textContent=v==0?'AUTO':`${v} THREADS`;
+}
+function onGpuLayerSlide(v){
+  document.getElementById('gpu-layer-val').textContent=v;
+}
+
+function setMode(mode){
+  hwMode=mode;
+  ['cpu','gpu','hybrid'].forEach(m=>{
+    const btn=document.getElementById('mode-'+m);
+    btn.className='hw-mode-btn'+(m===mode?` active-${m}`:'');
+  });
+  const layersSection=document.getElementById('gpu-layers-section');
+  layersSection.style.display=mode==='hybrid'?'block':'none';
+}
+
+function applyHwConfig(){
+  const gpus=hwData?hwData.gpus||[]:[];
+  if(hwMode==='cpu'){
+    numGpu=0;
+  } else if(hwMode==='gpu'){
+    numGpu=99; // offload all layers
+  } else {
+    numGpu=parseInt(document.getElementById('gpu-layer-slider').value);
+  }
+  numThread=parseInt(document.getElementById('thread-slider').value);
+
+  // Update topbar chips
+  const cpuChip=document.getElementById('hw-chip-cpu');
+  const gpuChip=document.getElementById('hw-chip-gpu');
+  if(hwMode==='cpu'){
+    cpuChip.className='hw-chip cpu active';
+    gpuChip.className='hw-chip gpu'+(gpus.length?'':' unavail');
+  } else if(hwMode==='gpu'){
+    cpuChip.className='hw-chip cpu';
+    gpuChip.className='hw-chip gpu active';
+  } else {
+    cpuChip.className='hw-chip cpu active';
+    gpuChip.className='hw-chip gpu active';
+  }
+
+  const modeLabel={cpu:'CPU ONLY',gpu:'GPU ONLY',hybrid:`HYBRID [${numGpu}L]`}[hwMode];
+  toast(`HW CONFIG: ${modeLabel} · THREADS: ${numThread||'AUTO'}`,'success');
+  closeHwModal();
 }
 
 /* Status */
@@ -903,7 +1254,7 @@ async function sendMessage(){
 
   isStreaming=true; document.getElementById('send-btn').disabled=true;
   try{
-    const resp=await fetch(`/api/chat/${currentSession}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,model,use_rag:ragEnabled})});
+    const resp=await fetch(`/api/chat/${currentSession}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,model,use_rag:ragEnabled,num_gpu:numGpu,num_thread:numThread})});
     const reader=resp.body.getReader(),decoder=new TextDecoder();
     let buffer='',aiText='',aiDiv=null;
     while(true){
